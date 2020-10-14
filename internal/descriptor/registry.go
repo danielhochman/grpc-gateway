@@ -176,19 +176,13 @@ func (r *Registry) loadFile(file *descriptorpb.FileDescriptorProto) {
 		Path: r.goPackagePath(file),
 		Name: r.defaultGoPackageName(file),
 	}
+	pkg.Alias = r.GetReservedGoPackageAlias(pkg.Name, pkg.Path)
+
 	if r.standalone {
 		pkg.Alias = "ext" + strings.Title(pkg.Name)
 	}
 
-	if err := r.ReserveGoPackageAlias(pkg.Name, pkg.Path); err != nil {
-		for i := 0; ; i++ {
-			alias := fmt.Sprintf("%s_%d", pkg.Name, i)
-			if err := r.ReserveGoPackageAlias(alias, pkg.Path); err == nil {
-				pkg.Alias = alias
-				break
-			}
-		}
-	}
+
 	f := &File{
 		FileDescriptorProto: file,
 		GoPkg:               pkg,
@@ -362,7 +356,7 @@ func (r *Registry) SetImportPath(importPath string) {
 // If succeeded, the alias will be never used for other packages in generated go files.
 // If failed, the alias is already taken by another package, so you need to use another
 // alias for the package in your go files.
-func (r *Registry) ReserveGoPackageAlias(alias, pkgpath string) error {
+func (r *Registry) reserveGoPackageAlias(alias, pkgpath string) error {
 	if taken, ok := r.pkgAliases[alias]; ok {
 		if taken == pkgpath {
 			return nil
@@ -372,6 +366,23 @@ func (r *Registry) ReserveGoPackageAlias(alias, pkgpath string) error {
 	r.pkgAliases[alias] = pkgpath
 	return nil
 }
+
+// GetReservedGoPackageAlias returns the alias required for the provided Go package after
+// registering it.
+func (r *Registry) GetReservedGoPackageAlias(name, pkgpath string) string {
+	if err := r.reserveGoPackageAlias(name, pkgpath); err != nil {
+		for i := 0; ; i++ {
+			alias := fmt.Sprintf("%s_%d", name, i)
+			if err := r.reserveGoPackageAlias(alias, pkgpath); err == nil {
+				return alias
+			}
+		}
+	}
+
+	// No alias needed.
+	return ""
+}
+
 
 // goPackagePath returns the go package path which go files generated from "f" should have.
 // It respects the mapping registered by AddPkgMap if exists. Or use go_package as import path

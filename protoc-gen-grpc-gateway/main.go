@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/golang/glog"
@@ -70,6 +71,17 @@ func main() {
 			return err
 		}
 
+		// Reserve base imports in the registry before loading the file.
+		var baseImports []descriptor.GoPackage
+		for _, pkgpath := range gengateway.BaseImports {
+			pkg := descriptor.GoPackage{
+				Path:  pkgpath,
+				Name:  path.Base(pkgpath),
+			}
+			pkg.Alias = reg.GetReservedGoPackageAlias(pkg.Name, pkg.Path)
+			baseImports = append(baseImports, pkg)
+		}
+
 		glog.V(1).Infof("Parsing code generator request")
 
 		if err := reg.Load(plugin.Request); err != nil {
@@ -90,7 +102,7 @@ func main() {
 			targets = append(targets, f)
 		}
 
-		g := gengateway.New(reg, *useRequestContext, *registerFuncSuffix, *pathType, *modulePath, *allowPatchFeature, *standalone)
+		g := gengateway.New(reg, baseImports, *useRequestContext, *registerFuncSuffix, *pathType, *modulePath, *allowPatchFeature, *standalone)
 		files, err := g.Generate(targets)
 		for _, f := range files {
 			glog.V(1).Infof("NewGeneratedFile %q in %s", f.GetName(), f.GoPkg)

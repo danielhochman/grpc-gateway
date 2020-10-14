@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -38,38 +37,8 @@ type generator struct {
 }
 
 // New returns a new generator which generates grpc gateway files.
-func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix, pathTypeString, modulePathString string,
+func New(reg *descriptor.Registry, baseImports []descriptor.GoPackage, useRequestContext bool, registerFuncSuffix, pathTypeString, modulePathString string,
 	allowPatchFeature, standalone bool) gen.Generator {
-	var imports []descriptor.GoPackage
-	for _, pkgpath := range []string{
-		"context",
-		"io",
-		"net/http",
-		"github.com/grpc-ecosystem/grpc-gateway/v2/runtime",
-		"github.com/grpc-ecosystem/grpc-gateway/v2/utilities",
-		"google.golang.org/protobuf/proto",
-		"google.golang.org/grpc",
-		"google.golang.org/grpc/codes",
-		"google.golang.org/grpc/grpclog",
-		"google.golang.org/grpc/metadata",
-		"google.golang.org/grpc/status",
-	} {
-		pkg := descriptor.GoPackage{
-			Path: pkgpath,
-			Name: path.Base(pkgpath),
-		}
-		if err := reg.ReserveGoPackageAlias(pkg.Name, pkg.Path); err != nil {
-			for i := 0; ; i++ {
-				alias := fmt.Sprintf("%s_%d", pkg.Name, i)
-				if err := reg.ReserveGoPackageAlias(alias, pkg.Path); err != nil {
-					continue
-				}
-				pkg.Alias = alias
-				break
-			}
-		}
-		imports = append(imports, pkg)
-	}
 
 	var pathType pathType
 	switch pathTypeString {
@@ -83,7 +52,7 @@ func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix, p
 
 	return &generator{
 		reg:                reg,
-		baseImports:        imports,
+		baseImports:        baseImports,
 		useRequestContext:  useRequestContext,
 		registerFuncSuffix: registerFuncSuffix,
 		pathType:           pathType,

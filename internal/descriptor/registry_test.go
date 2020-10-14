@@ -164,7 +164,7 @@ func TestLoadFileWithPackageNameCollision(t *testing.T) {
 		name: 'path/to/example.proto'
 		package: 'example'
 	`)
-	if err := reg.ReserveGoPackageAlias("ioutil", "io/ioutil"); err != nil {
+	if err := reg.reserveGoPackageAlias("ioutil", "io/ioutil"); err != nil {
 		t.Fatalf("reg.ReserveGoPackageAlias(%q) failed with %v; want success", "ioutil", err)
 	}
 	loadFile(t, reg, `
